@@ -1,0 +1,219 @@
+﻿var  __copyEvent__ = "							    	\
+	var element   = document.createElement('input'),    \
+		trueColor = this.style['color'],				\
+		trueText  = this.innerText,						\
+		self      = this;				                \
+														\
+	if (this.activate  === undefined)					\
+	{													\
+		this.activate          = true;                  \
+		element.style.position = 'absolute';  			\
+		element.style.left     = -9999;                	\
+		element.value          = this.innerText;	   	\
+														\
+		document.body.appendChild(element);				\
+														\
+		element.select();								\
+		document.execCommand('copy');					\
+														\
+		this.style.color = 'yellow';		           	\
+		this.innerText   = 'copy';                      \
+														\
+		setTimeout(function() { 						\
+			self.innerText   = trueText;				\
+			self.style.color = trueColor;				\
+			self.activate    = undefined;    			\
+		}, 500);										\
+														\
+		document.body.removeChild(element);             \
+	}",
+	__config__ = {
+		window: {
+			title: 'Поиск в Active Directory',
+			
+			size: {
+				x: 265,
+				y: 150
+			},
+			
+			style: {
+				'background-color': "#222930"
+			}
+		},
+		
+		select: {
+			defKey: 'Пользователи'
+		},
+		
+		searchDefText: "Поиск",
+		
+		nodeOptionName: 'sAMAccountName',
+		
+		sql: {
+			select: 'memberOf, description, postalAddress, division, department, telephoneNumber, mail, useraccountcontrol, sAMAccountName, displayName',
+			condition: "sAMAccountName = '{0}*' or displayName = '{0}*' or mail = '{0}*' or telephoneNumber = '{0}*' or sn = '{0}*' or department = '{0}*'",
+			DomainNamingContext: undefined,
+			
+			foundedText: "<td>Общее<br/>кол-во {0}<td>", 
+			
+			valueNormalName: {
+				useraccountcontrol: {
+					name: 'Статус УЗ',
+					
+					func: {
+						event: 'onClick',
+						def:   __copyEvent__
+					}
+				},
+				
+				displayName: {
+					name: 'ФИО',
+					
+					func: {
+						event: 'onClick',
+						def:   __copyEvent__
+					}
+				},
+				
+				sAMAccountName:  {
+					name: 'Логин',
+					func: {
+						event: 'onClick',
+						def:   __copyEvent__
+					}
+				},
+				
+				mail:  {
+					name: 'Почта',
+					func: {
+						event: 'onClick',
+						def:   __copyEvent__
+					}
+				},
+				
+				telephoneNumber:  {
+					name: 'Телефон',
+					func: {
+						event: 'onClick',
+						def:   __copyEvent__
+					}
+				},
+				
+				division:  {
+					name: 'Подразделение',
+					func: {
+						event: 'onClick',
+						def:   __copyEvent__
+					} 
+				},
+				
+				department:  {
+					name: 'Департамент',
+					func: {
+						event: 'onClick',
+						def:   __copyEvent__
+					}
+				},
+				
+				postalAddress:  {
+					name: 'Адрес',
+					func: {
+						event: 'onClick',
+						def:   __copyEvent__
+					}
+				},
+				
+				description: {
+					name: 'Категория пользователя',
+					func: {
+						event: 'onClick',
+						def:   __copyEvent__
+					}
+				},
+				
+				memberOf:  {
+					name: 'Группы',
+					func: undefined 
+				}
+			},
+			
+			specialConverter: {
+				'Группы': function(data)
+				{
+					var re  = data.match(/(?=CN).*?(?=,)/g),
+						cur = "";
+					
+					for (var n=0; n < re.length; n++)
+					{
+						cur += "<div onclick=\"" + __copyEvent__ + "\">" + (re[n].replace("CN=", "")) + "</div>";
+					}
+					
+					return cur;
+				},
+				
+				'Адрес': function(data)
+				{
+					var current = data.replace(/NEWLINE/g, " ");
+					
+					return current;
+				},
+				
+				'Категория пользователя': function(data)
+				{
+					return data.replace(/NEWLINE/g, "");
+				},
+				
+				'Статус УЗ': function(data)
+				{
+					var result = '';
+					
+					if (data === 512) 
+					{
+						result = 'Активна';
+					} else {
+						result = '<div style="color: orange;">Заблокирована</div>';
+					}
+					
+					return result;
+				}
+			}
+		}, 
+		
+		report: 
+		{
+
+			style: "                                 \
+				* {                                  \
+				  font-family: 'Raleway',sans-serif; \
+				}									 \
+				TABLE {							     \
+					border: 2px solid black;		 \
+					border-collapse: collapse;		 \
+				}									 \
+													 \
+				th, td {							 \
+					padding: 10px;					 \
+					border-right-width:  1px;   	 \
+					border-right-style:  solid;		 \
+					border-bottom-width: 2px; 		 \
+					border-bottom-style: solid;		 \
+					border-color:        black;		 \
+				} 								     \
+													 \
+				th {								 \
+					font-weight:      750;			 \
+					background-color: #0086b3;		 \
+					color:            white;		 \
+				}									 \
+													 \
+				div {							     \
+					max-width:  400px;				 \
+					max-height: 150px;				 \
+					scroll: auto;					 \
+					overflow-y: auto;				 \
+					overflow-x: auto;				 \
+				}",
+					
+			elemForNullNode: "<div style=\"color: #ff6600; font-weight: 800;\"> null </div>"	
+		}
+	};

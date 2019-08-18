@@ -1,0 +1,219 @@
+﻿var  __copyEvent__ = "							    	\
+	var element   = document.createElement('input'),    \
+		trueColor = this.style['color'],				\
+		trueText  = this.innerText,						\
+		self      = this;				                \
+														\
+	if (this.activate  === undefined)					\
+	{													\
+		this.activate          = true;                  \
+		element.style.position = 'absolute';  			\
+		element.style.left     = -9999;                	\
+		element.value          = this.innerText;	   	\
+														\
+		document.body.appendChild(element);				\
+														\
+		element.select();								\
+		document.execCommand('copy');					\
+														\
+		this.style.color = 'yellow';		           	\
+		this.innerText   = 'copy';                      \
+														\
+		setTimeout(function() { 						\
+			self.innerText   = trueText;				\
+			self.style.color = trueColor;				\
+			self.activate    = undefined;    			\
+		}, 500);										\
+														\
+		document.body.removeChild(element);             \
+	}",
+	__config__ = {
+		window: {
+			title: 'Search in Active Directory',
+			
+			size: {
+				x: 265,
+				y: 150
+			},
+			
+			style: {
+				'background-color': "#222930"
+			}
+		},
+		
+		select: {
+			defKey: 'Users'
+		},
+		
+		searchDefText: "Search",
+		
+		nodeOptionName: 'sAMAccountName',
+		
+		sql: {
+			select: 'memberOf, description, postalAddress, division, department, telephoneNumber, mail, useraccountcontrol, sAMAccountName, displayName',
+			condition: "sAMAccountName = '{0}*' or displayName = '{0}*' or mail = '{0}*' or telephoneNumber = '{0}*' or sn = '{0}*' or department = '{0}*'",
+			DomainNamingContext: undefined,
+			
+			foundedText: "Found {0} user(s).", 
+			
+			valueNormalName: {
+				useraccountcontrol: {
+					name: 'ACTIVE',
+					
+					func: {
+						event: 'onClick',
+						def:   __copyEvent__
+					}
+				},
+				
+				displayName: {
+					name: 'DISPLAY NAME',
+					
+					func: {
+						event: 'onClick',
+						def:   __copyEvent__
+					}
+				},
+				
+				sAMAccountName:  {
+					name: 'LOGIN',
+					func: {
+						event: 'onClick',
+						def:   __copyEvent__
+					}
+				},
+				
+				mail:  {
+					name: 'MAIL',
+					func: {
+						event: 'onClick',
+						def:   __copyEvent__
+					}
+				},
+				
+				telephoneNumber:  {
+					name: 'PHONE',
+					func: {
+						event: 'onClick',
+						def:   __copyEvent__
+					}
+				},
+				
+				division:  {
+					name: 'DIVISION',
+					func: {
+						event: 'onClick',
+						def:   __copyEvent__
+					} 
+				},
+				
+				department:  {
+					name: 'DEPARTAMENT',
+					func: {
+						event: 'onClick',
+						def:   __copyEvent__
+					}
+				},
+				
+				postalAddress:  {
+					name: 'ADRESS',
+					func: {
+						event: 'onClick',
+						def:   __copyEvent__
+					}
+				},
+				
+				description: {
+					name: 'USER CATEGORY',
+					func: {
+						event: 'onClick',
+						def:   __copyEvent__
+					}
+				},
+				
+				memberOf:  {
+					name: 'GROUPS',
+					func: undefined 
+				}
+			},
+			
+			specialConverter: {
+				'GROUPS': function(data)
+				{
+					var re  = data.match(/(?=CN).*?(?=,)/g),
+						cur = "";
+					
+					for (var n=0; n < re.length; n++)
+					{
+						cur += "<div onclick=\"" + __copyEvent__ + "\">" + (re[n].replace("CN=", "")) + "</div>";
+					}
+					
+					return cur;
+				},
+				
+				'ADRESS': function(data)
+				{
+					var current = data.replace(/NEWLINE/g, " ");
+					
+					return current;
+				},
+				
+				'USER CATEGORY': function(data)
+				{
+					return data.replace(/NEWLINE/g, "");
+				},
+				
+				'ACTIVE': function(data)
+				{
+					var result = '';
+					
+					if (data === 512) 
+					{
+						result = 'TRUE';
+					} else {
+						result = '<div style="color: orange;">FALSE</div>';
+					}
+					
+					return result;
+				}
+			}
+		}, 
+		
+		report: 
+		{
+
+			style: "                                 \
+				* {                                  \
+				  font-family: 'Raleway',sans-serif; \
+				}									 \
+				TABLE {							     \
+					border: 2px solid black;		 \
+					border-collapse: collapse;		 \
+				}									 \
+													 \
+				th, td {							 \
+					padding: 10px;					 \
+					border-right-width:  1px;   	 \
+					border-right-style:  solid;		 \
+					border-bottom-width: 2px; 		 \
+					border-bottom-style: solid;		 \
+					border-color:        black;		 \
+				} 								     \
+													 \
+				th {								 \
+					font-weight:      750;			 \
+					background-color: #0086b3;		 \
+					color:            white;		 \
+				}									 \
+													 \
+				div {							     \
+					max-width:  400px;				 \
+					max-height: 150px;				 \
+					scroll: auto;					 \
+					overflow-y: auto;				 \
+					overflow-x: auto;				 \
+				}",
+					
+			elemForNullNode: "<div style=\"color: #ff6600; font-weight: 800;\"> null </div>"	
+		}
+	};

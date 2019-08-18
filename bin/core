@@ -1,0 +1,851 @@
+var __elements__ = {
+		path: "./bin/elements",
+		list: [
+			'SearchField',
+			'IDSelect',
+			'InformationBox',
+			'StatusDiv',
+			'excelGeneration'
+		]
+	},
+	
+	__modules__ = {
+		objectTypeConverter: ' 					    \
+				\nfunction VBconverter(obj)		    \
+					\n\tdim str						\
+					\n\tfor each i in obj			\
+					\n\t\tstr = str & i & "NEWLINE"	\
+					\n\tnext						\
+					\n\tVBconverter = str			\
+				\nend function						\
+			'
+	},
+
+	innerErrors = [
+		'CFG file not exist!',
+		"Module '{0}' - not found",
+		"Module '{0}' - not found"
+	];
+
+
+/*  Class DOMForSearchOnAD.
+	
+	desc: 
+		Class for using Search on AD module and some specific debug utility.
+	
+*/
+function DOMForSearchOnAD(config)
+{
+	var self = this;
+	
+	this.ADSql = undefined;
+	
+	/*  class DOMForSearchOnAD method __init__(cfgPath)
+	    
+		desc: 
+			class constructor;
+			
+		params: 
+			cfgPath - string - path of cfg file.
+		
+		void;
+		
+	*/
+	this.__init__ = function(config)
+	{
+		this.ADSql = config;
+	}
+	
+	/*  class DOMForSearchOnAD method ADSearch()
+		
+		desc: 
+			find ad account by value;
+		
+		params:
+			value - string - value from SearchField
+		
+		return Object with finded fields or empty;
+		
+	*/
+	this.ADSearch = function(value)
+	{
+		var select    = this.ADSql.select,                             // What we select from account attributes
+			condition = this.ADSql.condition.replace(/\{0\}/g, value), // Condition like SQL
+			dnc       = this.ADSql.DomainNamingContext,                // if undefined user DNC
+			resp      = ADTableConnection(select, condition, dnc);
+		
+		return resp;
+	}
+	
+	this.formatField = function(key, val)
+	{
+		var def  = self.ADSql.specialConverter[key],
+			text = (def !== undefined && val !== undefined && val !== null) ? def(val):val;
+		
+		return text;
+	}
+	
+	/*  class DOMForSearchOnAD method getObjectFromVbs(path)
+		
+		desc:
+			Special convertor for object than returned from ADSearcher, but not supported JS. 
+			Use vbs connected module.
+			
+		params:
+			obj - unknow - unknow type object;
+			key - string - special atribute from config.specialConverter (method for format value).
+			
+		return string by value from unknow object;
+			
+	*/
+	this.getObjectFromVbs = function(obj, key)
+	{
+		var re     = this.ADSql.specialConverter[key],
+			str    = VBconverter(obj),
+			curent = (re !== undefined) ? re(str):str;
+		
+		return curent;
+	}
+	
+	this.__init__(config);
+}
+
+
+/*  Class FSO.
+	
+	desc: 
+		Class for using FSObject methods.
+	
+*/
+function FSO()
+{
+	this.fso = undefined;
+	
+	/*  class FSO method __init__(path)
+		
+		desc:
+			class constructor;
+			
+		void;
+			
+	*/
+	this.__init__ = function()
+	{
+		this.fso = new ActiveXObject("Scripting.FileSystemObject");
+	}
+	
+	/*  class FSO method getFileAbsPath(path)
+		
+		desc:
+			return ABSPAth of path;
+			
+		params:
+			path - string - spme path of something;
+			
+		return string;
+			
+	*/
+	this.getFileAbsPath = function(path)
+	{
+		var fPath = this.fso.GetAbsolutePathName(path);
+
+		return fPath;
+	}
+	
+	/*  class FSO method checkPath(path, ifTrue, ifFalse)
+	
+		desc: 
+			FileExists checkin;
+			
+		params:
+			path    - string   - object path;
+			ifTrue  - variant  - return if object found;
+			ifFalse - function - action if object not found;
+			
+		return variant;
+	*/
+	this.checkPath = function(path, ifTrue, ifFalse)
+	{
+		var path    = this.getFileAbsPath(path), 
+			result  = 0,
+			ifTrue  = (ifTrue !== undefined) ? ifTrue:true,
+			ifFalse = false;
+		
+		
+		if (!(this.fso.FileExists(path)))
+		{
+			try      {result = ifFalse(path);}
+			catch(e) {result = ifFalse}
+		} else {
+			try      {result = ifTrue(path);}
+			catch(e) {result = ifTrue}
+		}
+		
+		return result;
+	}
+	
+	/*  class FSO method __del__()
+		
+		desc: 
+			class terminate;
+			
+		void;
+		
+	*/
+	this.__del__ = function()
+	{
+		this.fso = undefined;
+		this     = undefined;
+	}
+	
+	this.__init__()
+	
+}
+
+
+/*  Class Main.
+	
+	desc: 
+		Application core.
+	
+*/
+function Main()
+{
+	var self = this;
+	
+	this.elems    = {};
+	this.modules  = {};
+	this.shedules = {
+		onStart: [
+			(function() 
+			{
+				var body = document.getElementsByTagName('body')[0];
+		
+				self.additionObject(body.style, self.cfg.window.style, true);
+				self.elemsSetting();
+			}),
+			
+			(function() 
+			{
+				for (var m in self.modules) self.modules[m] = window[m];
+				
+			})
+		]
+	}
+	
+	/*  class Main method __init__(cfgPath)
+	    
+		desc: 
+			class constructor;
+		    load config, connect inner elems type(scripts);
+			
+		params: 
+			cfgPath - string - path of cfg file.
+		
+		void;
+		
+	*/
+	this.__init__ = function()
+	{
+		this.fso = new FSO();
+		this.cfg = window['__config__'];
+		this.ADP = new DOMForSearchOnAD(this.cfg.sql);
+		
+		document.getElementsByTagName('title')[0].text = self.cfg.window.title;
+		
+		this.onStart();
+		this.connectVBSModules();
+	}
+	
+	/*  class Main method additionObject()
+		
+		desc:
+			addition two object to one.
+			
+		params:
+			obj1 - object;
+			obj2 - object;
+			loop - boolean - if loop was retrun curent object, else return this function with revers params
+		
+		return object;
+	*/
+	this.additionObject = function(obj1, obj2, loop)
+	{
+		var curObject = obj1;
+		
+		for (var key in obj2)
+		{
+			var val = obj2[key];
+			
+			curObject[key] = val;
+		}
+		
+		if (loop === undefined) return this.additionObject(obj2, curObject, true);
+		
+		return curObject;
+	}
+
+	/*  class Main method connectModules()
+		
+		desc:
+			connect modules from config file node modules to head;
+		
+		void;
+	*/
+	this.connectVBSModules = function()
+	{
+		for (var key in __modules__)
+		{
+			var code = __modules__[key],
+				elem = document.createElement('script');
+			
+			elem.type         = "text/vbscript";
+			elem.text         = code;
+			this.modules[key] = null;
+			
+			document.appendChild(elem);
+		}
+	}
+	
+	this.startShedule = function(sheduleName)
+	{
+		var shedule = this.shedules[sheduleName];
+		
+		for (var n=0; n < shedule.length; n++)
+		{
+			var def = shedule[n];
+			
+			def();
+		}
+	}
+	
+	/*  class Main method createCurentFieldsContent(rows)
+		
+		desc:
+			format 'dirt' value and key to inner format.
+			
+		params:
+			rows - Array - rows from ADSearch sql field.
+			
+		return object;
+			
+	*/
+	this.createCurentFieldsContent = function(rows)
+	{
+		var curRows = {};
+		
+		for (var k in rows)
+		{
+			var val  = rows[k],
+				key  = this.cfg.sql.valueNormalName[k].name,
+				func = this.cfg.sql.valueNormalName[k].func;
+			 
+			 // Special VBS convertor for class than JS not supported.
+			curRows[key] = {
+				func:   func,
+				value:  ((typeof val) !== "unknown") ? this.ADP.formatField(key, val):this.ADP.getObjectFromVbs(val, key)
+			}
+		}
+		
+		return curRows;
+	}
+	
+	this.onApplicationLoad = function(elem, enable)
+	{
+		document.body.disabled     = (enable) ? true:false;
+		elem.style.backgroundColor = (enable) ? 'white':'#008000';
+        document.body.style.cursor = (enable) ? "wait":"default";
+		elem.style.cursor          = (enable) ? "wait":"default";
+		
+		this.stop = function() 
+		{
+			self.onApplicationLoad(elem, !enable);
+		}
+	}
+	
+	/*  class Main method elemsSetting()
+		
+		desc:
+			Connect params from elems.params to elems from GUI;
+			
+		void;
+			
+	*/
+	this.elemsSetting = function()
+	{
+		var self = this;
+		
+		for (var n=0; n < __elements__.list.length; n++)
+		{
+			var id     = __elements__.list[n],
+				elem   = document.getElementById(id),
+				params = window[id];
+			
+			self.elems[id] = elem;
+			
+			this.setElemAttributes(elem, params);
+			elem.setAttribute('master', this);
+			
+			if (elem.onRender) elem.onRender();
+		}
+	}
+
+	/*  class Main method headScriptConnector(path, type, language)
+		
+		desc:
+			Connect script object to main Application;
+			
+		params:
+			path     - unknow - file path;
+			type     - string - optional script type;
+			language - string - optional script language;
+			
+		return HTMLElement(script);
+		
+	*/
+	this.headScriptConnector = function(path, type, language)
+	{
+		var el       = document.createElement('script'),
+			type     = (type !== undefined) ? type:"text/javascript",
+			language = (type !== undefined) ? type:"javascript";
+		
+		el.src  = path;
+		el.type = type;
+		
+		document.getElementsByTagName('head')[0].appendChild(el);
+		
+		return el;
+	}
+
+	/*  class Main method ifRowsFinded(rows)
+		
+		desc:
+			Events if request from AD not empty.
+			
+		params:
+			rows - object- filds from AD request;
+			
+		void;
+		
+	*/
+	this.ifRowsFinded = function(rows)
+	{
+		var length = rows.length;
+		
+		this.elems.InformationBox.show();             // Show Box for format request field value
+		this.elems.SearchField.blickColor('#80ffbf'); // Animation
+		this.elems.StatusDiv.setText(this.cfg.sql.foundedText.replace(/\{0\}/, length));
+		this.elems.IDSelect.appendRows(rows);         // Append option with field name on Select
+	}
+
+	/*  class Main method ifRowsNotFinded(rows)
+		
+		desc:
+			Events if request from AD empty.
+			
+		void;
+		
+	*/
+	this.ifRowsNotFinded = function()
+	{
+		this.elems.SearchField.blickColor('#ff5c33', false); // Animation;
+	}
+
+	/*  class Main method run()
+		
+		desc:
+			Start when Application loaded.
+			Select params for inner elems.
+			
+		void;
+		
+	*/
+	this.run = function()
+	{
+		this.startShedule('onStart');
+	}
+
+	/*  class Main method setElemAttributes(el, attributes)
+		
+		desc:
+			Set Params for element;
+			
+		params:
+			el         - HTMLElement -  element for configurate;
+			attributes - Object      -  params to append on element.
+			
+		void;
+		
+	*/
+	this.setElemAttributes = function(el, attributes)
+	{
+		for (var att in attributes)
+		{
+			var param = attributes[att];
+
+			if ((typeof param) === "object")  
+			{
+				try      {this.setElemAttributes(el[att], param);}
+				catch(e) {alert('Problem with element: _el_'.replace("_el_", el));}
+			} else {
+				el[att] = param;
+			}
+		}
+	}
+
+	/*  class Main method onStart()
+		
+		desc:
+			Application presetting.
+
+		void;
+		
+	*/
+	this.onStart = function()
+	{
+		var x   = (this.cfg.window.size.x === undefined) ? 300:this.cfg.window.size.x,
+			y   = (this.cfg.window.size.y === undefined) ? 300:this.cfg.window.size.y,
+			els = __elements__;
+		
+		this.headScriptConnector(els.path);
+		window.resizeTo(x, y);
+	}
+	
+	this.__init__();
+}
+
+
+/*  Class ADTableConnection.
+	
+	desc: 
+		Class for using Search on AD.
+	
+*/
+var ADTableConnection = function(selector, sqlCondition, DomainNamingContext)
+{
+	/*  class ADTableConnection method getAttsFromField(fields)
+	    
+		desc: 
+			Convert basic Dom Field to JS object.
+			
+		params: 
+			fields - Object - Field in ADODB.Command.objRecordSet.
+		
+		return object;
+		
+	*/
+    function getAttsFromField(fields)
+    {
+        var row  = {},
+			step = 0;
+		
+        while (true)
+        {
+			try 
+			{
+				var field       = fields.Item(step);
+				row[field.Name] = field.Value;
+			} catch(e) {
+				break;
+			}
+			
+			step++;
+        }
+    
+        return row;
+    }
+	
+	/*  class ADTableConnection method generateCollectioFromFields(objRecordSet)
+	    
+		desc: 
+			Convert objRecordSet to JS object.
+			
+		params: 
+			objRecordSet - Object - responsed object from ADODB.Command.
+		
+		return object;
+		
+	*/
+    function generateCollectioFromFields(objRecordSet)
+    {
+        diction  = {rows: []};
+        
+        while (!objRecordSet.EOF)
+        {
+            diction.rows.push(getAttsFromField(objRecordSet.Fields));
+            objRecordSet.MoveNext();
+        }
+
+        return diction;
+    }
+	
+	/*  class ADTableConnection method requests(ADconnection, Commander, rootDomainNamingContext, selector, sqlCondition)
+	    
+		desc: 
+			Request to AD base.
+			
+		params: 
+			ADconnection 			- ADODB.Connection;
+			Commander   		    - ADODB.Command;
+			rootDomainNamingContext - Domain Naming Context;
+			selector                - string                 - string with like SQL  Select;
+			sqlCondition			- string                 - string with like SQL  Where condition;
+		
+		void;
+		
+	*/
+    function requests(ADconnection, Commander, rootDomainNamingContext, selector, sqlCondition)
+    {
+        Commander.CommandText = "SELECT " + selector + " FROM 'LDAP://" + rootDomainNamingContext + "' WHERE " + sqlCondition;
+
+		var objRecordSet      = Commander.Execute(),
+			result            = generateCollectioFromFields(objRecordSet);
+        
+        objRecordSet.Close();
+        
+		return result;
+    } 
+	
+	/*  class ADTableConnection method connect(ADconnection, Commander)
+	    
+		desc: 
+			Connect to AD and preset commander.
+			
+		params: 
+			ADconnection 			- ADODB.Connection;
+			Commander   		    - ADODB.Command.
+		void;
+		
+	*/
+    function connect(ADconnection, Commander)
+    {
+        ADconnection.Open("Active Directory Provider");
+        
+        Commander.ActiveConnection                     = ADconnection;
+        Commander.Properties.item("Searchscope").value = 2;
+    }
+
+    var ADconnection            = new ActiveXObject("ADODB.Connection"),
+		Commander               = new ActiveXObject("ADODB.Command"),
+		rootDSE                 = GetObject("LDAP://rootDSE"),
+		rootDomainNamingContext = (DomainNamingContext !== undefined) ? DomainNamingContext:rootDSE.Get("dnsHostName");
+	ADconnection.Provider       = "ADsDSOObject";
+
+    connect(ADconnection, Commander);
+    return requests(ADconnection, Commander, rootDomainNamingContext, selector, sqlCondition);
+}
+
+
+var JSObjectOnHTML = function(master)
+{
+	var self = this,
+		core = master;
+	
+	this.TableDocument = " \
+	<!doctype html>        \
+	<html>                 \
+		<head>             \
+		 <style>--style--  \
+		 </style>          \
+		</head>            \
+	";
+	
+	this.__init__ = function()
+	{
+		var self = this;
+		
+		try {
+			self.shell = new ActiveXObject("WScript.Shell");
+			self.visibility = false;
+			self.FSO   = new ActiveXObject("Scripting.FileSystemObject");
+		} catch(e) {
+			alert("WScript.Shell COM not found!");
+		}
+	}
+	
+	this.__del__ = function()
+	{
+		self.shell = undefined;
+		self.FSO   = undefined;
+	}
+	
+	this.fileSaveShow = function()
+	{
+		var ps1    = "./bin/fileDialog.ps1",
+			stdout = "./__stdout__",
+			exec   = self.shell.Run("powershell.exe -file " + ps1 + " " + stdout, 0, true),
+			stream = new ActiveXObject("ADODB.Stream"),
+			result = undefined,
+			txt    = "";
+		
+		stream.CharSet = 'utf-8';
+		
+		stream.Open();
+		stream.LoadFromFile(stdout);
+		
+		txt    = stream.ReadText().replace(/^[ ].*?|[\s]$|[\n]/g, "");
+		result = (Number(txt) !== 1) ? txt:result;
+		
+		stream.close();
+		
+		return result;
+	}
+	
+	this.generateRow = function(row, rowIndex, onlyKey, keyOnRowValueObject)
+	{
+		var corentRow   = [],
+			columnIndex = 1;
+			
+		for (var n in row)
+		{
+			var val = row[n],
+				col = {
+					column: columnIndex,
+					row:    rowIndex,
+					value:  null
+				};
+			
+			if (onlyKey)  				 col.value = n;
+			if (!onlyKey)                col.value = (keyOnRowValueObject !== undefined) ? val[keyOnRowValueObject]:val;
+			if (col.value !== null && 
+			    col.value !== undefined) col.value = col.value.replace(/<\/.*?>/g, "\n").replace(/<.*?>/g, "");
+			
+			corentRow.push(col);
+			columnIndex++;
+		}
+		
+		return corentRow;
+	}
+	
+	this.convertJSArrayToTable = function(arr, keyWithValue, keyOnRowValueObject)
+	{
+		var table  = [],
+			header = false,
+			row    = 1;
+		
+		for (var n=0; n < arr.length; n++)
+		{
+			var node = arr[n],
+				data = (keyWithValue !== undefined) ? node[keyWithValue]:node;
+			
+			if (data !== undefined) 
+			{
+				if (table.length === 0) 
+				{
+					table.push({columns: this.generateRow(data, row, true, keyOnRowValueObject)});
+					
+					row += 1;
+				}
+				
+				table.push({columns: this.generateRow(data, row, false, keyOnRowValueObject)});
+				row += 1;
+			}
+		}
+		
+		return table;
+	}
+	
+	this.recordHTMLTableAppendCell = function(row, valueIfEmpty, lineNumber, forExcel)
+	{
+		var tr  = document.createElement('tr');
+		
+		for (var i in row) 
+		{
+			var val  = row[i].value,
+				txt  = (val !== null && val !== undefined) ? val:valueIfEmpty,
+				td   = (lineNumber === 0) ? document.createElement('th'):document.createElement('td'),
+				cont = document.createElement('div');
+			
+			if (forExcel !== undefined && val !== null && val !== undefined)
+			{
+				cont.innerHTML = ((txt.replace(/[0-9 \-]/g, "") === "") ? ('="' + txt + '"'):txt).replace(/\n/g, "; ");
+			} else {
+				cont.innerHTML = txt.replace(/\n/g, "<br />");
+			}
+			
+			td.appendChild(cont);
+			tr.appendChild(td);
+		}
+		
+		return tr;
+	}
+	
+	this.recordHTMLTable = function(table, forExcel)
+	{
+		var style     = (core.cfg.report.style !== undefined) ? core.cfg.report.style:"",
+			ifEmpty   = (core.cfg.report.elemForNullNode !== undefined) ? core.cfg.report.elemForNullNode:"----",
+			doc       = self.TableDocument.replace("--style--", style),
+			body      = document.createElement('body'),
+			htmlTable = document.createElement('table'),
+			line      = 0;
+		
+		for (var n in table)
+		{
+			var row = table[n].columns,
+				tr  = this.recordHTMLTableAppendCell(row, ifEmpty, line, forExcel);
+			
+			htmlTable.appendChild(tr);	
+			line++;
+		}
+		
+		body.appendChild(htmlTable);
+		
+		return (doc + body.innerHTML + "</html>");
+	}
+	
+	this.copyOnBufer = function(data)
+	{
+		var input = document.createElement('input');
+		
+		input.style.position = "absolute";
+		input.style.left     = -9999;
+		input.value          = data;
+		
+		document.body.appendChild(input);
+		input.select();
+		document.execCommand('copy');
+		document.body.removeChild(input);
+	}
+	
+	this.writeContentOnExcelFile = function(path, content)
+	{
+		var app     = new ActiveXObject("Excel.Application"),
+			disable = document.body.disabled;
+		
+		app.visible            = false;
+		document.body.disabled = (disable) ? false:true;
+	
+		app.WorkBooks.Add();
+
+		self.copyOnBufer(content);
+		app.ActiveSheet.Paste();
+		app.Columns("A:WA").Select();
+		app.Selection.EntireColumn.AutoFit();
+
+		document.body.disabled = disable;
+
+		app.ActiveWorkBook.SaveAs(path);
+		app.Quit();
+	}
+	
+	this.writeContentOnTextFile = function(path, content)
+	{
+		var file = self.FSO.CreateTextFile(path);
+			
+		file.Write(content);
+		file.Close();
+	}
+	
+	this.recordTable = function(path, table)
+	{
+		var type = path.replace(/.*?(\.=?)|[\s ]/g, ""),
+			path = path.replace(/\\/g, "\\").replace(/^\s+|\s+$/g, '');
+		
+		if (type === 'html') this.writeContentOnTextFile(path,  this.recordHTMLTable(table));
+		if (type === 'xlsx') this.writeContentOnExcelFile(path, this.recordHTMLTable(table, true));
+		if (type !== 'xlsx' && 
+		    type !== 'html') alert("Type: '" + type + "', ReqExp Error");
+	}
+	
+	this.__init__();
+}

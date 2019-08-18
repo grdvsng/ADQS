@@ -1,0 +1,493 @@
+var excelGeneration = {
+	style: {
+		display: 'block',
+		position: 'absolute',
+		
+		top:   30,
+		left:  350,
+
+		'background-color': '#008000',
+		
+		width:  35,
+		height: 35,
+		
+		'font-size':   "16pt",
+		'font-weight': "900",
+		'font-family': "Serif",
+		color:         "white",
+		
+		border: "3px solid white",
+		
+		padding: 2
+	},
+
+	title: "Generate EXCEL|HTML report",
+	
+	onclick: function()
+	{
+		
+
+		var load      = new this.master.onApplicationLoad(this, true),
+			options   = document.getElementsByTagName('Option'),
+			repporter = new JSObjectOnHTML(this.master),
+			table     = repporter.convertJSArrayToTable(options, 'data', 'value'),
+			path      = repporter.fileSaveShow();
+		
+		if (path !== undefined) repporter.recordTable(path, table);
+		
+		repporter.__del__();
+		load.stop();
+	}
+}
+
+
+/*  class IDSelect 
+
+	desc:
+		Class of Select for user change search result data witch formated in InformationBox.
+	
+*/
+var IDSelect = {
+	style: {
+		width: 220,
+		
+		'margin-top': 2,
+		'margin-bottom': 10,
+		fontSize: "14pt",
+		color:    "black",
+		
+		'font-weight': 900,
+		
+		padding:  "5px",
+		border:   "2px groove black"
+	},
+	
+	/*  Class IDSelect method appendRows(rows).
+	
+		desc: 
+			Append row specific name on select options.
+			
+		params:
+			rows - object - collection with search result.
+			
+		void.
+	
+	*/
+	appendRows: function(rows)
+	{
+		for (var n = 0; n < rows.length; n++)
+		{
+			var row = rows[n];
+			
+			this.appendSelectOption(row[this.master.cfg.nodeOptionName], row);
+		}
+	},
+	
+	/*  Class IDSelect method appendSelectOption(option, value, selected).
+	
+		desc: 
+			Append row specific name on select options.
+			
+		params:
+			option   - string  - creating option name;
+			value    - object  - special attribute for option, with search result.
+			selected - boolean - selected option or not.
+			
+		void.
+	
+	*/
+	appendSelectOption: function(option, value, selected)
+	{
+		var elem = document.createElement('option');
+		
+		elem.innerHTML = option;
+		elem.data      = (value !== undefined) ? this.master.createCurentFieldsContent(value):undefined;
+				
+		if (selected) elem.selected = true;
+		
+		this.appendChild(elem);
+	},
+	
+	/*  Class IDSelect method getSelected().
+	
+		desc: 
+			search now selected element.
+			
+		return variant.
+	
+	*/
+	getSelected: function()
+	{
+		for (var n = 0; n < this.options.length; n++)
+		{
+			el = this.options[n];
+			if (el.selected) return el;
+		}
+	},
+	
+	/*  Class IDSelect method clear().
+	
+		desc: 
+			delete Element not default Options. 
+			
+		void.
+	
+	*/
+	clear: function() 
+	{
+		for (var n = 0; n < this.options.length; n++)
+		{
+			el = this.options[n];
+			if (el.value !== "null") this.remove(n);
+		}
+		
+		this.options.setAttribute('length', 0);
+		this.appendSelectOption(this.master.cfg.select.defKey, undefined, true);
+	},
+		
+	/*  Class IDSelect method onRender().
+	
+		desc: 
+			Start preseting. 
+			
+		void.
+	
+	*/
+	onRender: function()
+	{
+		this.clear();
+	},
+	
+	/*  Class IDSelect method onchange().
+	
+		desc: 
+			Format content in InformationBox if select not default Option.
+			
+		void.
+	
+	*/
+	onchange: function()
+	{
+		var selected = this.getSelected();
+		
+		this.master.elems.InformationBox.clear();
+		
+		if (selected.data) this.master.elems.InformationBox.generateContent(selected.data);
+	}
+};
+
+
+/*  Class InformationBox.
+	
+	desc: 
+		Class for Element which format data after search.
+	
+*/
+var InformationBox = {
+	style: {
+		width: 390,
+		height: 250,
+		
+		display: 'none',
+		
+		'margin-top': 40,
+		
+		border: "2px groove Black",
+		
+		overflow: "auto",
+		
+		fontSize: "14pt",
+		color:    "#222930",
+		
+		'background-color': '#4EB1BA'
+	},
+	
+	innerFields: "<div style=\"font-weight: 900;		\
+	                           border: 2px solid black; \
+							   color: White; padding:   \
+							   1px;\">{key}:			\
+			     <div style=\" font-weight: 800;		\
+							   color: #222930; 			\
+							   padding: 1px; 			\
+							   font-size: 11pt;\"		\
+					  id=\"{id}\"                       \
+				 >{val}</div>",
+	
+	getFunctionForFieldFromConfig: function(key)
+	{
+		var func;
+
+		try {
+			func = this.master.cfg.sql.valueNormalName[key].func;
+		} catch(e) {
+			func = undefined;
+		}
+		
+		return func;
+
+	},
+	
+	generateFunctionForField: function(id, func)
+	{
+		var elem = document.getElementById(id),
+			ev   = func.event,
+			def  = func.def;
+		
+		elem[ev] = def;
+	},
+	
+	/*  class InformationBox method __init__(cfgPath)
+	    
+		desc: 
+			format content on div from object like collection.
+			
+		params: 
+			data - object - object to format on div.
+		
+		void;
+		
+	*/
+	generateContent: function(data)
+	{
+		var tb = document.getElementById('InformationBox'),
+			n  = 0;
+		
+		for (var key in data)
+		{
+			var val  = data[key].value,
+				func = data[key].func,
+				id   = "innerFields_" + n,
+				td   = this.innerFields.replace(/\{key\}/g, key).replace(/\{val\}/g, val).replace(/\{id\}/g, id);
+			
+			this.innerHTML += td;
+			n++;
+
+			if (func !== undefined) this.generateFunctionForField(id, func);
+		}
+	},
+	
+	/*  class InformationBox method hide()
+	    
+		desc: 
+			hide elem and resize window.
+			
+		void;
+		
+	*/
+	hide: function()
+	{
+		var y = this.master.cfg.window.size.y,
+			x = this.master.cfg.window.size.x;
+		this.style.display = 'none';
+		
+		window.resizeTo(x, y);
+	},
+	
+	/*  class InformationBox method hide()
+	    
+		desc: 
+			show elem and resize window.
+			
+		void;
+		
+	*/
+	show: function()
+	{
+		var y = Number(this.style.width.replace("px", "")) + 40,
+			x = (document.body.offsetHeight + Number(this.style.height.replace("px", ""))) + 40;
+		
+		this.style.display = 'block';
+		
+		window.resizeTo(y, x);
+	},
+	
+	/*  class InformationBox method hide()
+	    
+		desc: 
+			delete content from div.
+			
+		void;
+		
+	*/
+	clear: function()
+	{
+		this.innerText = "";
+	}
+};
+
+
+/*  class SearchField 
+
+	desc:
+		Class of field for user input.
+	
+*/
+var SearchField = {
+	style: {
+		width: 220,
+		
+		'margin-top': 2,
+		
+		color:    "#4EB1BA",
+		
+		'font-weight': 900,
+		
+		fontSize: '14pt',
+		border:   "2px solid black"
+	},
+	
+	/*  class SearchField method _onSubmit(value)
+		
+		desc:
+			Method start if value condition fallowed and user press Enter.
+			
+		params:
+			value - value from input;
+			
+		void;
+		
+	*/
+	_onSubmit: function(value)
+	{
+		var rows = this.master.ADP.ADSearch(value).rows;
+
+		this.master.elems.IDSelect.clear();
+		this.master.elems.InformationBox.clear();
+		this.master.elems.InformationBox.hide();
+		
+		if (rows.length)  this.master.ifRowsFinded(rows);
+		if (!rows.length) this.master.ifRowsNotFinded();
+	},
+	
+	/*  class SearchField method blickColor(color, selectDefValue)
+		
+		desc:
+			Method for animate element.
+			
+		params:
+			color          - string  - color to animate field;
+			selectDefValue - boolean - set default field value after animation or not. 
+			
+		void;
+		
+	*/
+	blickColor: function(color, selectDefValue)
+	{
+		var self      = this,
+			baseColor = new String(this.style.backgroundColor);
+		
+		function resetColor(col)
+		{
+			self.style.backgroundColor = col;
+		}
+		
+		 resetColor(color);
+		 setTimeout(function(){resetColor('White');}, 800);
+		 
+		 if (selectDefValue) this.setDefValue();
+	},
+	
+	
+	/*  class SearchField method valueClear()
+		
+		desc:
+			Method for replace incorect value in field.
+			
+		void;
+		
+	*/
+	valueClear: function()
+	{
+		this.value = this.value.replace(/[:'"!#;%?()]|^[ ]/g, "");
+	},
+	
+	/*  class SearchField method setDefValue()
+		
+		desc:
+			Method for set default value in field.
+			
+		void;
+		
+	*/
+	setDefValue: function()
+	{
+		this.value = this.master.cfg.searchDefText;
+		this.title = this.master.cfg.searchDefText;
+	},
+	
+	/*  class SearchField method onclick()
+		
+		desc:
+			Check value and cleat field for user input;
+			
+		void;
+		
+	*/
+	onclick: function()
+	{
+		var text = this.value.replace(/[ ]/g),
+			re   = this.master.cfg.searchDefText;
+
+		if (text === re) this.value = "";
+	},
+	
+	/*  class SearchField method onkeyup()
+		
+		desc:
+			Check value and keyCode, if them follow condition call onSubmit method.
+			
+		void;
+		
+	*/
+	onkeyup: function() 
+	{
+		var cleanValue = this.value.replace(/[ ]/g, ""),
+			defValue   = this.master.cfg.searchDefText;
+		
+		if (window.event.keyCode === 13)
+		{
+			if ((cleanValue !== "") & (cleanValue !== defValue))
+			{
+				this.valueClear();
+				this._onSubmit(this.value);
+			} else {
+				this.blickColor('#ff5c33', false);
+			}
+		}
+	},
+	
+	/*  class SearchField method onRender()
+		
+		desc:
+			Preseting with elem render.
+			
+		void;
+		
+	*/
+	onRender: function()
+	{
+		this.setDefValue();
+	}
+};
+
+var StatusDiv = {
+	style: {
+		display: 'block',
+		position: 'absolute',
+		
+		top:   24,
+		left:  250,
+
+
+		'font-size':   "16pt",
+		'font-family': "Serif",
+		color:         "White",
+		
+		padding: 2
+	},
+	
+	setText: function(text)
+	{
+		this.innerHTML = text;
+	}
+}

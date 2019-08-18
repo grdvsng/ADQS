@@ -1,0 +1,49 @@
+<html>
+	<head>
+		<HTA:APPLICATION
+			APPLICATIONNAME="CONFLICT CHECK"
+			BORDER="DIALOG"
+			BORDERSTYLE="SUNKEN"
+			INNERBORDER="NO"
+			CAPTION="YES"
+			SCROLL="NO"
+			MAXIMIZEBUTTON="NO"
+			MINIMIZEBUTTON="NO"
+			SHOWINTASKBAR="YES"
+			SINGLEINSTANCE="YES"
+			SYSMENU="YES"
+			VERSION="1.0" 
+			CONTEXTMENU="NO"
+			ICON="./bin/shader/ico.gif"
+		/>
+		<title></title>
+		<script src="./bin/core" type="text/javascript" id="ApplicationCore">
+		</script>
+		<script src="./config_en" type="text/javascript" id="ApplicationConfig">
+		</script>
+		<script type="text/javascript">
+			var App = new Main();
+			
+			window.onload =  function() 
+			{
+				App.run();
+			}
+			
+		</script>
+	</head>
+	<body>
+		<div>
+			<input id="SearchField"/>
+			<br />
+			<select id="IDSelect">
+			</select>
+		</div>
+		<div id="StatusDiv">
+		</div>
+		<div id="InformationBox">
+		</div>
+		<button id="excelGeneration">
+			X
+		</button>
+	</body>
+</html>
